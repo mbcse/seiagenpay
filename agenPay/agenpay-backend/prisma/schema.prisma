@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String             @id @default(cuid())
+  email            String             @unique
+  password         String
+  name             String?
+  notionApiKey     String?
+  notionWorkspaceId String?
+  walletAddress    String?
+  walletId         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  
+  // Relations
+  notionDatabases  NotionDatabase[]
+  transactions     Transaction[]
+  agent            Agent?
+  paymentRequests  PaymentRequest[]
+  outgoingPayments OutgoingPayment[]
+}
+
+model Agent {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  name                 String
+  status               String    @default("STOPPED")
+  threadId             String?
+  lastActivity         DateTime?
+  totalProcessed       Int       @default(0)
+  totalSent            Int       @default(0)
+  totalReceived        Int       @default(0)
+  totalAmountSent      Float     @default(0)
+  totalAmountReceived  Float     @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id                String    @id @default(cuid())
+  userId            String
+  type              String    // INCOMING, OUTGOING, REFUND
+  status            String    // PENDING, PROCESSING, COMPLETED, FAILED
+  amount            Float
+  currency          String    @default("ETH")
+  network           String?
+  description       String?
+  toAddress         String?
+  fromAddress       String?
+  txHash            String?
+  x402PayId         String?
+  relatedRequestId  String?
+  paymentId         String?
+  paymentLink       String?
+  recipientEmail    String?
+  emailSent         Boolean   @default(false)
+  emailSentAt       DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotionDatabase {
+  id           String   @id @default(cuid())
+  userId       String
+  databaseId   String   @unique
+  databaseName String
+  databaseType String
+  properties   Json?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PaymentRequest {
+  id              String    @id
+  userId          String
+  amount          Float
+  currency        String    @default("USDC")
+  network         String    @default("sei-testnet")
+  recipientEmail  String?
+  recipientName   String?
+  description     String?
+  aiPrompt        String?
+  transactionType String    @default("ask_payment") // ask_payment, ask_and_refund, subscription
+  scheduleType    String    @default("immediate")   // immediate, scheduled
+  scheduledDate   DateTime?
+  status          String    @default("draft")       // draft, scheduled, processing, payment_received, refunded, failed, cancelled
+  x402PayLink     String?
+  paymentHash     String?
+  paidAt          DateTime?
+  refundDate      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OutgoingPayment {
+  id               String    @id @default(cuid())
+  userId           String
+  amount           Float
+  currency         String    @default("SEI")
+  network          String    @default("sei-testnet")
+  recipientAddress String
+  recipientName    String?
+  fromName         String?
+  description      String?
+  scheduleDate     DateTime
+  status           String    @default("scheduled") // scheduled, processing, completed, failed, cancelled
+  txHash           String?
+  executedAt       DateTime?
+  relatedRequestId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SystemConfig {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  value        String
+  description  String?
+  updatedAt    DateTime @updatedAt
+
+  @@map("system_config")
+} 
